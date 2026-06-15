@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { type TaxResult, type DeductionInput, calculateTax } from '../utils/tax'
+import { type TaxResult, type DeductionInput, type YearEndBonusResult, calculateTax } from '../utils/tax'
 
 interface HistoryRecord {
   id: string;
@@ -9,7 +9,9 @@ interface HistoryRecord {
   income: number;
   city: string;
   deductions: DeductionInput;
-  result: TaxResult;
+  result: TaxResult | null;
+  yearEndBonus: number;
+  bonusResult: YearEndBonusResult | null;
 }
 
 function loadHistory(): HistoryRecord[] {
@@ -65,6 +67,8 @@ export default function History() {
         monthlyIncome,
         incomeType: record.incomeType,
         city: record.city,
+        yearEndBonus: record.yearEndBonus,
+        bonusResult: record.bonusResult,
       }
     });
   };
@@ -77,6 +81,7 @@ export default function History() {
         income: record.income,
         city: record.city,
         deductions: record.deductions,
+        yearEndBonus: record.yearEndBonus,
       }
     });
   };
@@ -105,52 +110,88 @@ export default function History() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>税前月收入</td>
-                  {compareRecords.map(r => (
-                    <td key={r.id}>{fmt(r.incomeType === 'yearly' ? r.income / 12 : r.income)} 元</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>城市</td>
-                  {compareRecords.map(r => <td key={r.id}>{r.city}</td>)}
-                </tr>
-                <tr>
-                  <td>五险一金/月</td>
-                  {compareRecords.map(r => (
-                    <td key={r.id}>{fmt(r.result.totalSocialFundMonthly)} 元</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>专项扣除/月</td>
-                  {compareRecords.map(r => (
-                    <td key={r.id}>{fmt(r.result.specialDeductionsMonthly)} 元</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>应纳税所得额/月</td>
-                  {compareRecords.map(r => (
-                    <td key={r.id}>{fmt(r.result.taxableIncomeMonthly)} 元</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td style={{fontWeight:700, color:'var(--danger)'}}>每月个税</td>
-                  {compareRecords.map(r => (
-                    <td key={r.id} style={{fontWeight:700, color:'var(--danger)'}}>{fmt(r.result.taxMonthly)} 元</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td style={{fontWeight:700, color:'var(--success)'}}>每月到手</td>
-                  {compareRecords.map(r => (
-                    <td key={r.id} style={{fontWeight:700, color:'var(--success)'}}>{fmt(r.result.netMonthly)} 元</td>
-                  ))}
-                </tr>
-                <tr>
-                  <td style={{fontWeight:700, color:'var(--success)'}}>每年到手</td>
-                  {compareRecords.map(r => (
-                    <td key={r.id} style={{fontWeight:700, color:'var(--success)'}}>{fmt(r.result.netYearly)} 元</td>
-                  ))}
-                </tr>
+                {compareRecords.some(r => r.result) && (
+                  <>
+                    <tr>
+                      <td>税前月收入</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id}>{r.result ? fmt(r.incomeType === 'yearly' ? r.income / 12 : r.income) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td>城市</td>
+                      {compareRecords.map(r => <td key={r.id}>{r.city}</td>)}
+                    </tr>
+                    <tr>
+                      <td>五险一金/月</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id}>{r.result ? fmt(r.result.totalSocialFundMonthly) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td>专项扣除/月</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id}>{r.result ? fmt(r.result.specialDeductionsMonthly) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td>应纳税所得额/月</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id}>{r.result ? fmt(r.result.taxableIncomeMonthly) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{fontWeight:700, color:'var(--danger)'}}>每月个税</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id} style={{fontWeight:700, color:'var(--danger)'}}>{r.result ? fmt(r.result.taxMonthly) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{fontWeight:700, color:'var(--success)'}}>每月到手</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id} style={{fontWeight:700, color:'var(--success)'}}>{r.result ? fmt(r.result.netMonthly) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{fontWeight:700, color:'var(--success)'}}>每年到手（工资）</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id} style={{fontWeight:700, color:'var(--success)'}}>{r.result ? fmt(r.result.netYearly) : '-'} 元</td>
+                      ))}
+                    </tr>
+                  </>
+                )}
+                {compareRecords.some(r => r.bonusResult) && (
+                  <>
+                    <tr>
+                      <td>年终奖</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id}>{r.bonusResult ? fmt(r.bonusResult.bonusAmount) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td>年终奖个税</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id} style={{color:'var(--danger)'}}>{r.bonusResult ? fmt(r.bonusResult.taxAmount) : '-'} 元</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{fontWeight:700, color:'var(--success)'}}>年终奖税后</td>
+                      {compareRecords.map(r => (
+                        <td key={r.id} style={{fontWeight:700, color:'var(--success)'}}>{r.bonusResult ? fmt(r.bonusResult.netBonus) : '-'} 元</td>
+                      ))}
+                    </tr>
+                  </>
+                )}
+                {compareRecords.some(r => r.result && r.bonusResult) && (
+                  <tr>
+                    <td style={{fontWeight:700, color:'var(--primary)'}}>全年到手总收入</td>
+                    {compareRecords.map(r => (
+                      <td key={r.id} style={{fontWeight:700, color:'var(--primary)'}}>
+                        {r.result && r.bonusResult ? fmt(r.result.netYearly + r.bonusResult.netBonus) : '-'} 元
+                      </td>
+                    ))}
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -185,7 +226,8 @@ export default function History() {
                 <span className="history-date">{record.date}</span>
                 <div className="history-tags">
                   <span className="tag tag-blue">{record.city}</span>
-                  <span className="tag tag-amber">{record.incomeType === 'monthly' ? '月收入' : '年收入'}</span>
+                  {record.result && <span className="tag tag-amber">{record.incomeType === 'monthly' ? '月收入' : '年收入'}</span>}
+                  {record.bonusResult && <span className="tag tag-purple">年终奖</span>}
                   {record.deductions.childrenEducation && <span className="tag tag-green">子女教育</span>}
                   {record.deductions.housingLoan && <span className="tag tag-green">房贷</span>}
                   {record.deductions.rent && <span className="tag tag-green">房租</span>}
@@ -194,18 +236,38 @@ export default function History() {
                 </div>
               </div>
               <div className="history-metrics">
-                <div>
-                  <div className="history-metric-label">税前月收入</div>
-                  <div className="history-metric-value">{fmt(monthlyIncome)} 元</div>
-                </div>
-                <div>
-                  <div className="history-metric-label">每月个税</div>
-                  <div className="history-metric-value" style={{color:'var(--danger)'}}>{fmt(record.result.taxMonthly)} 元</div>
-                </div>
-                <div>
-                  <div className="history-metric-label">每月到手</div>
-                  <div className="history-metric-value" style={{color:'var(--success)'}}>{fmt(record.result.netMonthly)} 元</div>
-                </div>
+                {record.result && (
+                  <>
+                    <div>
+                      <div className="history-metric-label">税前月收入</div>
+                      <div className="history-metric-value">{fmt(monthlyIncome)} 元</div>
+                    </div>
+                    <div>
+                      <div className="history-metric-label">每月个税</div>
+                      <div className="history-metric-value" style={{color:'var(--danger)'}}>{fmt(record.result.taxMonthly)} 元</div>
+                    </div>
+                    <div>
+                      <div className="history-metric-label">每月到手</div>
+                      <div className="history-metric-value" style={{color:'var(--success)'}}>{fmt(record.result.netMonthly)} 元</div>
+                    </div>
+                  </>
+                )}
+                {record.bonusResult && (
+                  <>
+                    <div>
+                      <div className="history-metric-label">年终奖</div>
+                      <div className="history-metric-value">{fmt(record.bonusResult.bonusAmount)} 元</div>
+                    </div>
+                    <div>
+                      <div className="history-metric-label">年终奖个税</div>
+                      <div className="history-metric-value" style={{color:'var(--danger)'}}>{fmt(record.bonusResult.taxAmount)} 元</div>
+                    </div>
+                    <div>
+                      <div className="history-metric-label">年终奖税后</div>
+                      <div className="history-metric-value" style={{color:'var(--success)'}}>{fmt(record.bonusResult.netBonus)} 元</div>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="history-actions">
                 <button className="btn btn-outline btn-sm" onClick={() => viewRecord(record)}>查看详情</button>

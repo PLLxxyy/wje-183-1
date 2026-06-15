@@ -4,7 +4,7 @@
  */
 
 // 7级超额累进税率表（月度）
-const TAX_BRACKETS = [
+export const TAX_BRACKETS = [
   { min: 0,      max: 3000,   rate: 0.03, deduction: 0 },
   { min: 3000,   max: 12000,  rate: 0.10, deduction: 210 },
   { min: 12000,  max: 25000,  rate: 0.20, deduction: 1410 },
@@ -262,4 +262,55 @@ function estimateTaxSaving(
   else if (taxable > 3000) marginalRate = 0.10;
 
   return round2(Math.min(extraDeduction, taxable) * marginalRate * 12);
+}
+
+export interface YearEndBonusResult {
+  bonusAmount: number;
+  monthlyBonus: number;
+  applicableRate: number;
+  quickDeduction: number;
+  taxAmount: number;
+  netBonus: number;
+  bracketRange: string;
+}
+
+export function calculateYearEndBonusTax(bonusAmount: number): YearEndBonusResult {
+  if (bonusAmount <= 0) {
+    return {
+      bonusAmount: 0,
+      monthlyBonus: 0,
+      applicableRate: 0,
+      quickDeduction: 0,
+      taxAmount: 0,
+      netBonus: 0,
+      bracketRange: '-',
+    };
+  }
+
+  const monthlyBonus = round2(bonusAmount / 12);
+
+  let bracket = TAX_BRACKETS[0];
+  for (const b of TAX_BRACKETS) {
+    if (monthlyBonus > b.min) {
+      bracket = b;
+    } else {
+      break;
+    }
+  }
+
+  const taxAmount = round2(bonusAmount * bracket.rate - bracket.deduction);
+  const netBonus = round2(bonusAmount - taxAmount);
+
+  const maxStr = bracket.max === Infinity ? '以上' : formatNum(bracket.max);
+  const bracketRange = `${formatNum(bracket.min)} - ${maxStr}`;
+
+  return {
+    bonusAmount,
+    monthlyBonus,
+    applicableRate: bracket.rate,
+    quickDeduction: bracket.deduction,
+    taxAmount,
+    netBonus,
+    bracketRange,
+  };
 }

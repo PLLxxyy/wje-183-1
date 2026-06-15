@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CITIES, getCityByName } from '../utils/cities'
-import { calculateTax, type DeductionInput } from '../utils/tax'
+import { calculateTax, calculateYearEndBonusTax, type DeductionInput, type YearEndBonusResult } from '../utils/tax'
 
 interface HistoryRecord {
   id: string;
@@ -10,7 +10,9 @@ interface HistoryRecord {
   income: number;
   city: string;
   deductions: DeductionInput;
-  result: ReturnType<typeof calculateTax>;
+  result: ReturnType<typeof calculateTax> | null;
+  yearEndBonus: number;
+  bonusResult: YearEndBonusResult | null;
 }
 
 function loadHistory(): HistoryRecord[] {
@@ -37,8 +39,10 @@ export default function Home() {
   const [rentAmount, setRentAmount] = useState('1000');
   const [elderly, setElderly] = useState(false);
   const [contEd, setContEd] = useState(false);
+  const [yearEndBonusStr, setYearEndBonusStr] = useState('');
 
   const income = parseFloat(incomeStr) || 0;
+  const yearEndBonus = parseFloat(yearEndBonusStr) || 0;
   const monthlyIncome = incomeType === 'yearly' ? income / 12 : income;
 
   const handleCityChange = useCallback((newCity: string) => {
@@ -67,8 +71,13 @@ export default function Home() {
     return calculateTax(monthlyIncome, deductions);
   }, [monthlyIncome, deductions]);
 
+  const bonusResult = useMemo(() => {
+    if (yearEndBonus <= 0) return null;
+    return calculateYearEndBonusTax(yearEndBonus);
+  }, [yearEndBonus]);
+
   const handleCalculate = () => {
-    if (!result) return;
+    if (!result && !bonusResult) return;
     const record: HistoryRecord = {
       id: Date.now().toString(),
       date: new Date().toLocaleString('zh-CN'),
@@ -77,12 +86,14 @@ export default function Home() {
       city,
       deductions,
       result,
+      yearEndBonus,
+      bonusResult,
     };
     const history = loadHistory();
     history.unshift(record);
     if (history.length > 50) history.pop();
     saveHistory(history);
-    navigate('/result', { state: { result, deductions, monthlyIncome, incomeType, city } });
+    navigate('/result', { state: { result, deductions, monthlyIncome, incomeType, city, yearEndBonus, bonusResult } });
   };
 
   const fmt = (n: number) => n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -212,21 +223,78 @@ export default function Home() {
         </div>
       </div>
 
+      {/* 年终奖 */}
+      <div className="card">
+        <div className="card-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          年终奖（单独计税）
+        </div>
+        <div className="salary-input-group">
+          <input
+            type="number"
+            className="form-input"
+            placeholder="请输入年终奖金额"
+            value={yearEndBonusStr}
+            onChange={e => setYearEndBonusStr(e.target.value)}
+          />
+          <div className="input-suffix">元</div>
+        </div>
+        {bonusResult && (
+          <div style={{marginTop:12, padding:12, background:'var(--gray-100)', borderRadius:'var(--radius-sm)', fontSize:14}}>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
+              <span style={{color:'var(--gray-500)'}}>月均奖金</span>
+              <span>{fmt(bonusResult.monthlyBonus)} 元</span>
+            </div>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:6}}>
+              <span style={{color:'var(--gray-500)'}}>适用税率</span>
+              <span>{(bonusResult.applicableRate * 100).toFixed(0)}%</span>
+            </div>
+            <div style={{display:'flex', justifyContent:'space-between'}}>
+              <span style={{color:'var(--gray-500)'}}>应缴个税</span>
+              <span style={{color:'var(--danger)', fontWeight:600}}>{fmt(bonusResult.taxAmount)} 元</span>
+            </div>
+          </div>
+        )}
+        <p className="form-hint" style={{marginTop:8}}>
+          计算方式：奖金÷12确定税率档，再全额×税率-速算扣除数
+        </p>
+      </div>
+
       {/* 实时预览 */}
-      {result && (
+      {(result || bonusResult) && (
         <div className="summary-bar fade-in">
-          <div className="summary-item">
-            <div className="summary-item-label">预计每月到手</div>
-            <div className="summary-item-value" style={{color:'var(--success)'}}>
-              {fmt(result.netMonthly)} 元
+          {result && (
+            <>
+              <div className="summary-item">
+                <div className="summary-item-label">预计每月到手</div>
+                <div className="summary-item-value" style={{color:'var(--success)'}}>
+                  {fmt(result.netMonthly)} 元
+                </div>
+              </div>
+              <div className="summary-item">
+                <div className="summary-item-label">预计每月个税</div>
+                <div className="summary-item-value" style={{color:'var(--danger)'}}>
+                  {fmt(result.taxMonthly)} 元
+                </div>
+              </div>
+            </>
+          )}
+          {bonusResult && (
+            <div className="summary-item">
+              <div className="summary-item-label">年终奖个税</div>
+              <div className="summary-item-value" style={{color:'var(--danger)'}}>
+                {fmt(bonusResult.taxAmount)} 元
+              </div>
             </div>
-          </div>
-          <div className="summary-item">
-            <div className="summary-item-label">预计每月个税</div>
-            <div className="summary-item-value" style={{color:'var(--danger)'}}>
-              {fmt(result.taxMonthly)} 元
+          )}
+          {bonusResult && (
+            <div className="summary-item">
+              <div className="summary-item-label">年终奖税后</div>
+              <div className="summary-item-value" style={{color:'var(--success)'}}>
+                {fmt(bonusResult.netBonus)} 元
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -235,7 +303,7 @@ export default function Home() {
         className="btn btn-primary btn-block"
         style={{marginTop:8, padding:'14px 24px', fontSize:16}}
         onClick={handleCalculate}
-        disabled={!income}
+        disabled={!income && !yearEndBonus}
       >
         查看详细计算结果
       </button>

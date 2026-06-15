@@ -227,10 +227,6 @@ export default function Result() {
                 <td style={{paddingLeft:28}}>税率区间</td>
                 <td className="amount" style={{color:'var(--gray-500)'}}>{bonusResult.bracketRange}</td>
               </tr>
-              <tr>
-                <td style={{paddingLeft:28}}>速算扣除数</td>
-                <td className="amount" style={{color:'var(--gray-500)'}}>- {fmtYear(bonusResult.quickDeduction)}</td>
-              </tr>
               <tr className="highlight">
                 <td>应缴个税</td>
                 <td className="amount">{fmtYear(bonusResult.taxAmount)}</td>
@@ -242,7 +238,7 @@ export default function Result() {
             </tbody>
           </table>
           <p className="form-hint" style={{marginTop:12, marginBottom:0}}>
-            计算公式：应纳税额 = 年终奖 × 适用税率 - 速算扣除数
+            计算公式：应纳税额 = 年终奖 × 适用税率
           </p>
         </div>
       )}

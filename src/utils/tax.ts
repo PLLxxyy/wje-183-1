@@ -268,7 +268,6 @@ export interface YearEndBonusResult {
   bonusAmount: number;
   monthlyBonus: number;
   applicableRate: number;
-  quickDeduction: number;
   taxAmount: number;
   netBonus: number;
   bracketRange: string;
@@ -280,7 +279,6 @@ export function calculateYearEndBonusTax(bonusAmount: number): YearEndBonusResul
       bonusAmount: 0,
       monthlyBonus: 0,
       applicableRate: 0,
-      quickDeduction: 0,
       taxAmount: 0,
       netBonus: 0,
       bracketRange: '-',
@@ -298,7 +296,7 @@ export function calculateYearEndBonusTax(bonusAmount: number): YearEndBonusResul
     }
   }
 
-  const taxAmount = round2(bonusAmount * bracket.rate - bracket.deduction);
+  const taxAmount = round2(bonusAmount * bracket.rate);
   const netBonus = round2(bonusAmount - taxAmount);
 
   const maxStr = bracket.max === Infinity ? '以上' : formatNum(bracket.max);
@@ -308,7 +306,6 @@ export function calculateYearEndBonusTax(bonusAmount: number): YearEndBonusResul
     bonusAmount,
     monthlyBonus,
     applicableRate: bracket.rate,
-    quickDeduction: bracket.deduction,
     taxAmount,
     netBonus,
     bracketRange,

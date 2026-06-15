@@ -256,7 +256,7 @@ export default function Home() {
           </div>
         )}
         <p className="form-hint" style={{marginTop:8}}>
-          计算方式：奖金÷12确定税率档，再全额×税率-速算扣除数
+          计算方式：奖金÷12确定税率档，再全额×税率计税
         </p>
       </div>
 

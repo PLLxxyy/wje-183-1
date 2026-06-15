@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { type TaxResult, type DeductionInput, type YearEndBonusResult, calculateTax } from '../utils/tax'
+import { type TaxResult, type DeductionInput, type YearEndBonusResult, calculateTax, calculateYearEndBonusTax } from '../utils/tax'
 
 interface HistoryRecord {
   id: string;
@@ -29,6 +29,13 @@ export default function History() {
   const [records, setRecords] = useState<HistoryRecord[]>(() => loadHistory());
   const [compareIds, setCompareIds] = useState<string[]>([]);
 
+  const processedRecords = useMemo(() => {
+    return records.map(r => ({
+      ...r,
+      bonusResult: r.yearEndBonus > 0 ? calculateYearEndBonusTax(r.yearEndBonus) : null,
+    }));
+  }, [records]);
+
   const fmt = (n: number) => n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const toggleCompare = (id: string) => {
@@ -40,8 +47,8 @@ export default function History() {
   };
 
   const compareRecords = useMemo(() => {
-    return records.filter(r => compareIds.includes(r.id));
-  }, [records, compareIds]);
+    return processedRecords.filter(r => compareIds.includes(r.id));
+  }, [processedRecords, compareIds]);
 
   const deleteRecord = (id: string) => {
     const updated = records.filter(r => r.id !== id);
@@ -208,7 +215,7 @@ export default function History() {
       )}
 
       {/* 记录列表 */}
-      {records.length === 0 ? (
+      {processedRecords.length === 0 ? (
         <div className="empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -217,7 +224,7 @@ export default function History() {
           <button className="btn btn-primary" onClick={() => navigate('/')}>去计算</button>
         </div>
       ) : (
-        records.map(record => {
+        processedRecords.map(record => {
           const isComparing = compareIds.includes(record.id);
           const monthlyIncome = record.incomeType === 'yearly' ? record.income / 12 : record.income;
           return (

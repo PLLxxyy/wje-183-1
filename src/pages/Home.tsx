@@ -78,6 +78,7 @@ export default function Home() {
 
   const handleCalculate = () => {
     if (!result && !bonusResult) return;
+    const freshBonusResult = yearEndBonus > 0 ? calculateYearEndBonusTax(yearEndBonus) : null;
     const record: HistoryRecord = {
       id: Date.now().toString(),
       date: new Date().toLocaleString('zh-CN'),
@@ -87,13 +88,13 @@ export default function Home() {
       deductions,
       result,
       yearEndBonus,
-      bonusResult,
+      bonusResult: freshBonusResult,
     };
     const history = loadHistory();
     history.unshift(record);
     if (history.length > 50) history.pop();
     saveHistory(history);
-    navigate('/result', { state: { result, deductions, monthlyIncome, incomeType, city, yearEndBonus, bonusResult } });
+    navigate('/result', { state: { result, deductions, monthlyIncome, incomeType, city, yearEndBonus, bonusResult: freshBonusResult } });
   };
 
   const fmt = (n: number) => n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

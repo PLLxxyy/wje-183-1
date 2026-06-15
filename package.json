@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsc --project tsconfig.test.json && node test-dist/utils/tax.test.js"
+    "test": "rm -rf test-dist && tsc --project tsconfig.test.json && node test-dist/utils/tax.test.js"
   },
   "dependencies": {
     "react": "^18.2.0",

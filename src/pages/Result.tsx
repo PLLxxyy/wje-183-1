@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useMemo, useState } from 'react'
-import { type TaxResult, type DeductionInput, type YearEndBonusResult, getOptimizationTips, MONTHLY_THRESHOLD } from '../utils/tax'
+import { type TaxResult, type DeductionInput, type YearEndBonusResult, getOptimizationTips, MONTHLY_THRESHOLD, calculateYearEndBonusTax } from '../utils/tax'
 
 interface LocationState {
   result: TaxResult | null;
@@ -19,7 +19,7 @@ export default function Result() {
   const [view, setView] = useState<'monthly' | 'yearly'>('monthly');
   const [showOptimization, setShowOptimization] = useState(false);
 
-  if (!state || (!state.result && !state.bonusResult)) {
+  if (!state || (!state.result && !(state.yearEndBonus > 0))) {
     return (
       <div className="page-container">
         <div className="empty-state">
@@ -33,7 +33,13 @@ export default function Result() {
     );
   }
 
-  const { result, deductions, monthlyIncome, city, bonusResult, yearEndBonus } = state;
+  const { result, deductions, monthlyIncome, city, yearEndBonus } = state;
+
+  const bonusResult = useMemo(
+    () => (yearEndBonus > 0 ? calculateYearEndBonusTax(yearEndBonus) : null),
+    [yearEndBonus]
+  );
+
   const tips = useMemo(() => {
     if (!result) return [];
     return getOptimizationTips(monthlyIncome, deductions, result);
